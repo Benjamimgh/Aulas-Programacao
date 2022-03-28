@@ -1,0 +1,30 @@
+SELECT NOME, SEXO FROM FUNCIONARIOS;
+
+SELECT NOME, CARGO,
+CASE
+	WHEN CARGO = 'Financial Advisor' THEN 'Condicao 01'
+	When CARGO = 'Structural Engineer' THEN 'Condicao 02'
+	WHEN CARGO = 'Executive Secretary' THEN 'Condicao 03'
+	WHEN CARGO = 'Sales Associative' THEN 'Condicao 01'
+	ELSE 'OUTRAS CONDICOES'
+END AS "CONDICOES"
+FROM FUNCIONARIOS;
+
+/* UTILIZANDO VALORES BOOLEANOS */
+
+SELECT NOME, CARGO, (SEXO = 'Masculino') AS Masculino, (SEXO = 'Feminino') AS Feminino
+FROM FUNCIONARIOS;
+
+/* Mesclando Tecnicas */
+
+SELECT NOME, CARGO,
+CASE
+	WHEN (SEXO = 'Masculino') = true THEN 1
+	ELSE 0
+
+END AS "MASCULINO",
+CASE 
+	WHEN (SEXO = 'Feminino') = true THEN 1
+	ELSE 0
+END AS "FEMININO"
+FROM FUNCIONARIOS;
