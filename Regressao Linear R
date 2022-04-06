@@ -1,0 +1,57 @@
+library(readxl)
+bd<-read_excel("base_evasao_notamec.xlsx")
+# A variável resposta Y é Avaliacao_mec.
+# Vamos separar a parte da base com os casos que contém essa resposta
+#Divisão da base em casos com resposta 
+bd_modelo<- subset.data.frame(bd, Avaliacao_mec>=0)
+
+#Histograma de algumas variáveis
+hist(bd_modelo$Avaliacao_mec)
+
+#Diagrama de Dispersão e Análise de correlação linear entre duas variáveis quantitativas
+plot(bd_modelo$X9_IDADE,bd_modelo$Avaliacao_mec)
+cor(bd_modelo$Avaliacao_mec,bd_modelo$X9_IDADE) 
+
+#Análise de regressão linear com as quatro variáveis explicativas, sendo uma delas qualitativa (sexo)
+regres=lm(Avaliacao_mec ~ 
+            X5_NOTAS_ANT
+          + X9_IDADE
+          + X8_SEXO
+          + X10_DIST, data=bd_modelo)
+summary(regres)
+
+# Ao observar os resultados do modelo, optamos por retirar a variável distância)
+regres2=lm(Avaliacao_mec ~ 
+            X5_NOTAS_ANT
+          + X9_IDADE
+          + X8_SEXO, data=bd_modelo)
+summary(regres2)
+
+#intervalos de confiança para os coeficientes da equação
+confint(regres2)
+
+#resíduos
+plot(fitted(regres2),residuals(regres2),xlab="Valores Ajustados",ylab="Resíduos")
+abline(h=0)
+plot(bd_modelo$X5_NOTAS_ANT,residuals(regres2),xlab="Média notas anteriores",ylab="Resíduos")
+abline(h=0)
+plot(bd_modelo$X9_IDADE,residuals(regres2),xlab="idade",ylab="Resíduos")
+abline(h=0)
+plot(bd_modelo$X8_SEXO,residuals(regres2),xlab="sexo",ylab="Resíduos")
+abline(h=0)
+
+#avaliação da suposição de normalidade dos erros,
+qqnorm(residuals(regres2), ylab="Resíduos",xlab="Quantis teóricos",main="")
+qqline(residuals(regres2))
+
+#predição da base sem resposta
+#Base sem resposta 
+bd_new<-subset(bd, select = c('X5_NOTAS_ANT','X9_IDADE','X8_SEXO'))
+pred <- predict(regres2, newdata=bd, se.fit = TRUE, type="response")
+bd<- data.frame(bd,pred)
+#Salvando dados com predição em arquivo excel:
+install.packages('xlsx') #Caso não tenha essa biblioteca instalada, descomente
+library(xlsx)
+write.xlsx(bd, file="exemplo_mec_previsao.xlsx")
+
+
