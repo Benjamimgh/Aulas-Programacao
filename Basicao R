@@ -382,3 +382,101 @@ viagens <- read.csv("C:/Users/Fernando Hoppe/Documents/IRPF/2022/2019_Viagem".cs
   sep = ';',
   dec= ','
 )
+
+viagens <- read.csv("C:/Users/Fernando Hoppe/Documents/IRPF/2022/2019_Viagem.csv",
+  sep = ';',
+  dec= ','
+)
+
+head(viagens)
+
+View(viagens)
+
+dim(viagens)
+
+install.packages("dplyr")
+library(dplyr)
+
+glimpse(viagens)
+
+### TRANSFORMAÇÃO DOS DADOS OBTIDOS
+
+#Convertendo o tipo do dato para tipo Date
+?as.Date
+
+viagens$data.inicio <- as.Date(viagens$Período...Data.de.início, "%d/%m/%Y")
+
+glimpse(viagens)
+
+
+#Formatando a data de inicio - para utilizar apenas Ano/Mês
+?format
+viagens$data.inicio.formatada <- format(viagens$data.inicio, "%Y-%m")
+
+hist(viagens$Valor.passagens)
+
+summary(viagens$Valor.passagens)
+
+
+sd(viagens$valor.passagens)
+
+colSums(is.na(viagens))
+
+str(viagens$Situação)
+
+table(viagens$Situação)
+
+prop.table(table(viagens$Situação))*100
+
+
+# 1 - Quais orgaos estao gastando mais com passagens areas? 
+
+# Criando um dataframe com os 15 orgaos que gastam mais
+
+p1 <- viagens %>%
+  group_by(Nome.do.órgão.superior)%>%
+  summarise(n=sum(Valor.passagens))%>%
+  arrange(desc(n))%>%
+  top_n(15)
+
+names(p1) <- c("orgao", "valor")
+
+p1
+
+install.packages("dplyr")
+install.packages("ggplot2")
+
+library(dplyr)
+library(ggplot2)
+
+ggplot(p1, aes(x = reorder(orgao,valor), y = valor))+
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  labs(x="Valor",y="Orgãos")
+
+
+p2 <- viagens %>%
+  group_by(Destinos)%>%
+  summarise(n=sum(Valor.passagens))%>%
+  arrange(desc(n))%>%
+  top_n(15)
+
+names(p2) <- c('destino','valor')
+ggplot(p2,aes(x=reorder(destino,valor),y=valor))+
+  geom_bar(stat="identity",fill="#0ba791")+
+  geom_text(aes(label=valor),vjust=0.3, size=3)+
+  coord_flip()+
+  labs(x="Valor",y="Destino")
+
+p3 <- viagens%>%
+  group_by(data.inicio.formatada)%>%
+  summarise(qtd = n_distinct(Identificador.do.processo.de.viagem))
+
+head(p3)
+
+ggplot(p3,aes(x=data.inicio.formatada, y=qtd, group=1))+
+  geom_line()+
+  geom_point()
+
+
+
