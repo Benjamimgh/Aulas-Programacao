@@ -1,0 +1,113 @@
+install.packages("descr")
+install.packages("readxl")
+install.packages("dplyr")
+install.packages("caret")
+install.packages("ROCR")
+library(readxl)
+library(dplyr)
+library(caret)
+library(ROCR)
+library(descr)
+
+bd_evasao <- read_excel(
+  "bd_evasao.xlsx",
+  col_types = c("text", "text", "text",
+                "text", "numeric", "numeric", "numeric",
+                "text", "numeric", "numeric", "numeric",
+                "numeric", "numeric"))
+View(bd_evasao)
+
+# Verificar como estão distribuídos os casos de evasão na amostra de alunos
+# 0 são os que não evadiram, 1 são os que evadiram e "vazio" são os que não temos resposta e queremos prever.
+
+freq(bd_evasao$Y_evasao)
+
+# A geração da amostra depende de um gerador de números aleatórios que é controlado por uma semente (seed em inglês). Gera amostra fixando os casos, o Seed é um número que garante que a geração "aleatória" do computador será sempre a mesma. Neste caso garante que quando você rodar os comandos na sua máquina, usando também o 1111, os valores serão os mesmos. Poderia ter sido escolhido 2, 10, 100000.
+set.seed(1111)
+
+# Amostra de Treinamento (Treino) e amostra de Teste. Pegamos um pedaço da base de dados para Treinamento (treino) do modelo e outro pedaço utilizaremos para o Teste. O ideal é pegar sempre a maior parte para Treinamento e a menor parte para Teste. Aqui pegamos 70% da base para Treino e 30% para Teste. Testar as variáveis com base na base de Treinamento (Treino) e para avaliar o modelo observamos a base de Teste. Logo, a predição será feita com a base de teste (menor parte) usando os coeficientes de modelo da base de Treinamento (Treino) (maior parte)
+
+casos <- subset(bd_evasao, Y_evasao>-1)
+indice.treino <- createDataPartition(y=casos$Y_evasao, p=0.70, list=FALSE)
+treino = casos[indice.treino, ]
+teste = casos[-indice.treino, ]
+
+#MODELO 1 base treino
+
+reg_log1=(glm(Y_evasao ~
+                X1_Curso
+              + X2_Disc
+              + X4_modal.
+              + X5_notas_ant
+              + X6_num_disc_eva
+              + X7_men_atr
+              + X8_sexo
+              + X9_idade
+              + X10_dist,
+              family=binomial(link="logit"), data=treino))
+summary(reg_log1)
+
+#MODELO 2
+reg_log2=(glm(Y_evasao ~
+                X2_Disc
+              + X4_modal.
+              + X6_num_disc_eva
+              + X7_men_atr
+              + X9_idade,
+              family=binomial(link="logit"),data=treino))
+summary(reg_log2)
+
+
+#Interpretação dos coeficientes da equação:
+round(exp(coef(reg_log2)),8)
+
+# Fazendo as predições para a base de Teste e Vendo se o modelo está bom. Vamos avaliar o modelo pela base de Teste, ai iremos ver o quanto o modelo conseguiu acertar com casos que nem estavam na base de Treino (por isso que os coeficientes utilizados são da base Treino (reg_log2)
+pred.Teste = predict(reg_log2,teste, type = "response")  
+Teste_v2 = cbind(teste,pred.Teste) 
+pred.val = prediction(pred.Teste ,Teste_v2$Y_evasao)
+
+# Plota curva ROC
+performance = performance(pred.val, "tpr", "fpr")
+plot(performance, col = "black", lwd = 2)
+
+# Organizando a tabela de dados para calcular as métricas da curva ROC
+require(pROC)
+pred_roc <- 
+  dplyr::tibble(
+    pred.Teste,
+    "Y_evasao" = as.factor(as.numeric(teste$Y_evasao))
+  ) %>% arrange(desc(pred.Teste))
+
+# Criando objeto com as métricas para curva ROC
+roc_reg <- pROC::roc(pred_roc$Y_evasao, pred_roc$pred.Teste, percent = TRUE)
+
+# Se desejar,é possível utilizar o próprio pacote pROC para plotar a curva ROC
+par(pty = "s")
+plot.roc(
+  roc_reg,
+  print.auc = TRUE,
+  legacy.axes = TRUE,
+  xlab = "Taxa de Falso Positivo (100 - Especificidade)",
+  ylab = "Taxa de Verdadeiro Positivo (Sensibilidade)"
+)
+
+#Calculo Estatística KS
+ks <- max(attr(performance, "y.values")[[1]] - (attr(performance, "x.values")[[1]]))
+ks
+
+#confusion matrix com ponto de corte em 50%
+table(teste$Y_evasao, pred.Teste > 0.5)
+
+#confusion matrix com ponto de corte em 40%
+table(teste$Y_evasao, pred.Teste > 0.4)
+
+#confusion matrix com ponto de corte em 35%
+table(teste$Y_evasao, pred.Teste > 0.35)
+
+#Insere a probabilidade de evasão para toda a base de dados, inclusive os casos sem a informação Y.
+bd_evasao$predict <- predict(reg_log2, newdata=bd_evasao, type="response")
+
+#Gráfico que mostra as probabilidades de evasão separada entre evadidos e concluídos
+bd_evasao$sit <- as.factor(bd_evasao$Y_evasao)
+plot(bd_evasao$predict, pch=16, col=c("red", "blue")[unclass(bd_evasao$sit)])
+abline(h=0.35)
